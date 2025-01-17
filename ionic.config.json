@@ -1,0 +1,7 @@
+{
+  "name": "svg-flow",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "custom"
+}
