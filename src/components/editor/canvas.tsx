@@ -3,6 +3,7 @@ import { useEditorStore } from '../../store/editor-store';
 import { readTextFile } from '@tauri-apps/api/fs';
 import { dialog } from '@tauri-apps/api';
 import { listen } from '@tauri-apps/api/event';
+import { ZoomIn, ZoomOut } from 'lucide-react';
 
 // ----------------------------------------
 // Ruler Constants & Helpers
@@ -240,17 +241,28 @@ export function Canvas() {
         return;
       }
 
-      // Otherwise, store essential element info
+      // Get computed styles
+      const computedStyle = window.getComputedStyle(target);
+
+      // Build element properties object
       const element = {
         tagName: target.tagName,
         id: target.id,
-        className:
-          target instanceof SVGElement && target.className.baseVal
-            ? target.className.baseVal
-            : target.className || '',
+        className: target instanceof SVGElement && target.className.baseVal
+          ? target.className.baseVal
+          : target.className || '',
+        properties: {
+          // Basic SVG properties
+          fill: target.getAttribute('fill') || computedStyle.fill || 'none',
+          stroke: target.getAttribute('stroke') || computedStyle.stroke || 'none',
+          strokeWidth: target.getAttribute('stroke-width') || computedStyle.strokeWidth || '1',
+          opacity: target.getAttribute('opacity') || computedStyle.opacity || '1',
+          // Transform properties if they exist
+          transform: target.getAttribute('transform') || 'none',
+        },
         getAttribute: (attr: string) => target.getAttribute(attr),
         setAttribute: (attr: string, value: string) => target.setAttribute(attr, value),
-        style: window.getComputedStyle(target),
+        style: computedStyle,
         element: target,
         bbox: target instanceof SVGGraphicsElement ? target.getBBox() : null,
       };
@@ -259,6 +271,29 @@ export function Canvas() {
       if (target instanceof SVGGraphicsElement) {
         setSelectedPath(target);
         target.classList.add('selected-shape');
+        
+        // Add shape-specific properties
+        if (target.tagName === 'rect') {
+          element.properties = {
+            ...element.properties,
+            x: target.getAttribute('x') || '0',
+            y: target.getAttribute('y') || '0',
+            width: target.getAttribute('width') || '0',
+            height: target.getAttribute('height') || '0',
+          };
+        } else if (target.tagName === 'circle') {
+          element.properties = {
+            ...element.properties,
+            cx: target.getAttribute('cx') || '0',
+            cy: target.getAttribute('cy') || '0',
+            r: target.getAttribute('r') || '0',
+          };
+        } else if (target.tagName === 'path') {
+          element.properties = {
+            ...element.properties,
+            d: target.getAttribute('d') || '',
+          };
+        }
       } else {
         setSelectedPath(null);
       }
@@ -318,15 +353,7 @@ export function Canvas() {
         containerEl.removeEventListener('mouseleave', handleMouseUp);
       }
     };
-  }, [
-    currentSvg,
-    setSelectedElement,
-    settings?.zoomSpeed,
-    position,
-    isPanning,
-    startPanPos,
-    selectedPath,
-  ]);
+  }, [currentSvg, settings?.zoomSpeed, position, isPanning, startPanPos, selectedPath, setSelectedElement]);
 
   // ----------------------------------------
   // 3. File Drop (Tauri or Web)
@@ -413,6 +440,36 @@ export function Canvas() {
     }
   };
 
+  useEffect(() => {
+    const handleZoom = (e: CustomEvent) => {
+      const { type } = e.detail;
+      
+      if (type === 'in' || type === 'out') {
+        const factor = type === 'in' ? 1.2 : 0.8;
+        setScale(prev => {
+          const target = prev * factor;
+          const duration = 200; // Animation duration in ms
+          const steps = 20; // Number of steps in animation
+          const stepSize = (target - prev) / steps;
+          
+          let current = prev;
+          for (let i = 0; i < steps; i++) {
+            setTimeout(() => {
+              setScale(current + stepSize * (i + 1));
+            }, (duration / steps) * i);
+          }
+          return prev; // Return prev to avoid immediate jump
+        });
+      } else if (type === 'reset') {
+        setScale(1);
+        centerSvg();
+      }
+    };
+
+    window.addEventListener('zoom', handleZoom as EventListener);
+    return () => window.removeEventListener('zoom', handleZoom as EventListener);
+  }, []);
+
   // ----------------------------------------
   // RENDER
   // ----------------------------------------
@@ -423,7 +480,7 @@ export function Canvas() {
         isDragging ? 'bg-slate-700/50' : ''
       }`}
       style={{
-        backgroundColor: settings?.backgroundColor || '#ffffff',
+        backgroundColor: settings?.backgroundColor || '#E7E7E7',
         cursor: isPanning ? 'grabbing' : 'grab',
         paddingTop: settings.showRulers ? RULER_SIZE : 0,
         paddingLeft: settings.showRulers ? RULER_SIZE : 0,
@@ -432,7 +489,6 @@ export function Canvas() {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onDoubleClick={handleDoubleClick}
     >
       {/* Drag Overlay */}
       {isDragging && (
@@ -459,7 +515,7 @@ export function Canvas() {
             size={containerRef.current?.clientHeight || 0}
           />
           {/* Ruler corner */}
-          <div className="absolute top-0 left-0 w-5 h-5 bg-slate-800 border-r border-b border-slate-600" />
+          <div className="absolute top-0 left-0 w-5 h-5 text-gray-400 bg-slate-800 border-r border-b border-slate-600" />
         </>
       )}
 
@@ -484,6 +540,26 @@ export function Canvas() {
         />
       )}
 
+      {/* Zoom Controls */}
+      <div className="absolute top-4 right-4 flex gap-2 z-10">
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('zoom', { detail: { type: 'out' }}))}
+          className="p-2.5 rounded-full shadow-lg hover:bg-sky-900 bg-sky-800 text-sky-200"
+          title="Zoom Out"
+          type="button"
+        >
+          <ZoomOut size={22} />
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('zoom', { detail: { type: 'in' }}))}
+          className="p-2.5 rounded-full shadow-lg hover:bg-sky-900 bg-sky-800 text-sky-200" 
+          title="Zoom In"
+          type="button"
+        >
+          <ZoomIn size={22} />
+        </button>
+      </div>
+
       {/* SVG Container */}
       <div
         ref={svgContainerRef}
@@ -496,9 +572,19 @@ export function Canvas() {
       >
         <style>
           {`
+            .svg-container {
+              pointer-events: all;
+              cursor: default;
+            }
+            .svg-container svg {
+              pointer-events: all;
+            }
+            .svg-container * {
+              pointer-events: all;
+              cursor: default;
+            }
             .selected-shape {
-              outline: 1px solid #3b82f6;
-              outline-offset: 1px;
+              /* Remove outline styles */
             }
           `}
         </style>
@@ -508,8 +594,12 @@ export function Canvas() {
               width: 'fit-content',
               height: 'fit-content',
             }}
-            dangerouslySetInnerHTML={{ __html: currentSvg }}
-          />
+          >
+            <div 
+              className="svg-container"
+              dangerouslySetInnerHTML={{ __html: currentSvg }}
+            />
+          </div>
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <p className="text-gray-500">Drop an SVG file here or open from sidebar</p>

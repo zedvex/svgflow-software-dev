@@ -57,7 +57,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     gridSize: 30,
     gridColor: '#e5e7eb',
     gridOpacity: 100,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f7f7f7',
     showRulers: false,
     showGuidelines: false,
     zoomSpeed: 50,

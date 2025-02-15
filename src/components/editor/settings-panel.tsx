@@ -352,7 +352,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
         <div className="rounded bg-slate-700 p-6">
           <h3 className="mb-4 font-semibold text-sky-400">Performance</h3>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            {/* <div className="flex items-center justify-between">
               <label htmlFor="enableSmoothZoom" className="text-slate-300">
                 Smooth Zoom
               </label>
@@ -363,7 +363,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                 className="h-4 w-4 accent-sky-500"
                 onChange={(e) => updateSettings({ enableSmoothZoom: e.target.checked })}
               />
-            </div>
+            </div> */}
 
             <div className="flex items-center justify-between">
               <label htmlFor="maxUndoHistory" className="text-slate-300">

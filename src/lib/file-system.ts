@@ -42,55 +42,45 @@ export async function saveSvgFile(content: string, defaultPath?: string) {
   }
 }
 
-export async function exportSvgFile(content: string, defaultPath?: string) {
+export async function exportSvgFile(svgCode: string, format: 'svg' | 'png' | 'jpg'): Promise<boolean> {
   try {
-    const savePath = await save({
-      defaultPath,
+    const options = {
       filters: [{
-        name: 'SVG',
-        extensions: ['svg']
-      }, {
-        name: 'PNG',
-        extensions: ['png']
+        name: format.toUpperCase(),
+        extensions: [format]
       }]
-    });
-
-    if (!savePath) return false;
-
-    if (savePath.endsWith('.png')) {
-      // Convert SVG to PNG
-      const svgBlob = new Blob([content], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(svgBlob);
-      const img = new Image();
-      
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = url;
-      });
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Could not get canvas context');
-
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-
-      const dataUrl = canvas.toDataURL('image/png');
-      const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
-      
-      // Write the PNG file
-      await writeTextFile(savePath, base64Data, { encoding: 'base64' });
-      URL.revokeObjectURL(url);
-    } else {
-      // Save as SVG
-      await writeTextFile(savePath, content);
-    }
+    };
     
+    const filePath = await save(options);
+    
+    if (!filePath) return false;
+
+    if (format === 'svg') {
+      // Direct SVG save
+      await writeTextFile(filePath, svgCode);
+    } else {
+      // For PNG and JPG, you'll need to convert the SVG first
+      // This might require additional processing using a library or native capabilities
+      const blob = await convertSvgToImage(svgCode, format);
+      await writeBinaryFile(filePath, blob);
+    }
+
     return true;
   } catch (error) {
     console.error('Error exporting file:', error);
-    return false;
+    throw error;
   }
+}
+
+// Helper function to convert SVG to image formats
+async function convertSvgToImage(svgCode: string, format: 'png' | 'jpg'): Promise<Uint8Array> {
+  // You'll need to implement the conversion logic here
+  // This might involve:
+  // 1. Creating a temporary SVG element
+  // 2. Converting it to a canvas
+  // 3. Exporting the canvas to the desired format
+  // 4. Converting the result to a Uint8Array
+  
+  // This is a placeholder - you'll need to implement the actual conversion
+  throw new Error('Image conversion not implemented yet');
 }

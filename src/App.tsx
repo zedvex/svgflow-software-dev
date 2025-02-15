@@ -9,7 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useEditorStore } from './store/editor-store';
 import { Modal } from './components/ui/modal';
 
-const APP_VERSION = "v0.1.3";
+const APP_VERSION = "v0.1.5";
 
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -39,7 +39,7 @@ function App() {
       currentTheme === 'light' ? 'bg-white' : 'bg-slate-900'
     }`}>
       {/* Settings Panel */}
-      <div className={`absolute inset-y-0 left-0 w-96 transform transition-transform duration-300 ease-in-out z-50 ${
+      <div className={`absolute inset-y-0 left-0 w-96 transform transition-transform duration-300 ease-in-out z-[9999] ${
         showSettings ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <SettingsPanel onClose={() => setShowSettings(false)} />
@@ -55,9 +55,9 @@ function App() {
       {/* Main content wrapper with border */}
       <div className="flex-1 flex flex-col">
         {/* Version info bar */}
-        <div className="bg-slate-800 text-slate-300 px-4 py-1 text-sm flex justify-between items-center border-b border-slate-600">
+        <div className="bg-[#073550] text-slate-300 px-4 py-1 text-sm flex justify-between items-center border-b border-sky-900">
           <span>SVGFlow Editor {APP_VERSION}</span>
-          <span className="text-slate-400">Made with ❤️ by FlowStack</span>
+          <span className="text-slate-300">Made with ❤️ by FlowStack</span>
         </div>
 
         {/* 2) MAIN PANELS */}
@@ -84,7 +84,7 @@ function App() {
         </PanelGroup>
 
         {/* Status Bar */}
-        <div className="h-6 bg-slate-800 text-slate-300 px-4 flex items-center justify-between text-sm border-t border-slate-600">
+        <div className="h-6 bg-[#032234] text-slate-300 px-4 flex items-center justify-between text-sm border-t border-slate-600">
           <div className="flex items-center space-x-4">
             <span>{getStatusMessage()}</span>
             {selectedElement && (

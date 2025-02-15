@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "SVGFlow",
-    "version": "0.1.4"
+    "version": "0.1.5"
   },
   "tauri": {
     "allowlist": {
@@ -39,10 +39,10 @@
       },
       "externalBin": [],
       "icon": [
-        "icons/icon.ico"
+        "icons/icon-svgflow.ico"
       ],
       "identifier": "com.svgflow.dev",
-      "longDescription": "SVG Editor and Optimizer",
+      "longDescription": "SVG Viewer and Inspector",
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",
@@ -50,7 +50,7 @@
         "providerShortName": null,
         "signingIdentity": null
       },
-      "resources": [],
+      "resources": ["icons/*"],
       "shortDescription": "",
       "targets": "all",
       "windows": {

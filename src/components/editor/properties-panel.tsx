@@ -1,23 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useEditorStore } from '../../store/editor-store';
 import { ChromePicker } from 'react-color';
+import { Copy } from 'lucide-react';
 
 export function PropertiesPanel() {
-  const { selectedElement, updateSelectedElement } = useEditorStore();
-  const [showColorPicker, setShowColorPicker] = React.useState<'fill' | 'stroke' | false>(false);
-  const [currentColor, setCurrentColor] = React.useState<string>('#000000');
-  const [colorPickerPosition, setColorPickerPosition] = useState({ x: 0, y: 0 });
-  const [originalColors, setOriginalColors] = useState<Record<string, string>>({});
+  const { selectedElement } = useEditorStore();
 
-  useEffect(() => {
-    if (selectedElement) {
-      setOriginalColors({
-        fill: getElementAttribute('fill') || 'none',
-        stroke: getElementAttribute('stroke') || 'none',
-        'stroke-width': getElementAttribute('stroke-width') || '1'
-      });
-    }
-  }, [selectedElement]);
+  const [showTooltip, setShowTooltip] = useState<{ show: boolean; position: string }>({ 
+    show: false, 
+    position: '' 
+  });
 
   const getElementAttribute = (attribute: string): string => {
     if (!selectedElement) return '';
@@ -32,44 +24,20 @@ export function PropertiesPanel() {
     return selectedElement.className || '';
   };
 
-  const handleColorPickerOpen = (type: 'fill' | 'stroke', e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = rect.x + rect.width + 10; // 10px offset from the color preview
-    const y = rect.y;
-    
-    // Adjust if would go off screen
-    const pickerWidth = 225; // Chrome picker width
-    if (x + pickerWidth > window.innerWidth) {
-      setColorPickerPosition({ 
-        x: rect.x - pickerWidth - 10,
-        y
-      });
-    } else {
-      setColorPickerPosition({ x, y });
+  const copyToClipboard = async (text: string, position: 'fill' | 'stroke') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setShowTooltip({ show: true, position });
+      setTimeout(() => {
+        setShowTooltip({ show: false, position: '' });
+      }, 1500);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
     }
-
-    const color = getElementAttribute(type);
-    setCurrentColor(color === 'none' ? '#000000' : color || '#000000');
-    setShowColorPicker(type);
-  };
-
-  const handleColorChange = (color: { hex: string }) => {
-    if (!showColorPicker) return;
-    
-    setCurrentColor(color.hex);
-    updateSelectedElement({ [showColorPicker]: color.hex });
-  };
-
-  const handleColorPickerClose = () => {
-    setShowColorPicker(false);
-  };
-
-  const handleResetColor = (type: 'fill' | 'stroke' | 'stroke-width') => {
-    updateSelectedElement({ [type]: originalColors[type] });
   };
 
   return (
-    <div className="h-full w-full text-slate-300 p-4">
+    <div className="bg-[#032234] h-full w-full text-slate-300 p-4">
       <h2 className="text-lg font-semibold mb-4 text-white border-b border-slate-600 pb-2">
         Element Properties
       </h2>
@@ -85,137 +53,77 @@ export function PropertiesPanel() {
             </div>
           </div>
 
-          {/* Color Controls */}
+          {/* Colors */}
           <div className="bg-slate-700 p-4 rounded">
             <h3 className="font-medium mb-2 text-sky-400">Colors</h3>
             <div className="space-y-4">
               {/* Fill Color */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-slate-300">Fill Color</label>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-8 h-8 rounded border border-slate-600 cursor-pointer"
-                      style={{ 
-                        backgroundColor: getElementAttribute('fill') || 'transparent',
-                        backgroundImage: getElementAttribute('fill') === 'none' ? 
-                          'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 
-                          'none',
-                        backgroundSize: '8px 8px',
-                        backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
-                      }}
-                      onClick={(e) => handleColorPickerOpen('fill', e)}
-                    />
+              <div className="flex items-center justify-between">
+                <label className="text-slate-300">Fill Color</label>
+                <div className="flex items-center gap-2 min-w-40">
+                  <div
+                    className="w-6 h-6 rounded border border-slate-600 flex-shrink-0"
+                    style={{ 
+                      backgroundColor: selectedElement.properties.fill || 'transparent',
+                      backgroundImage: selectedElement.properties.fill === 'none' ? 
+                        'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 
+                        'none',
+                      backgroundSize: '8px 8px',
+                      backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
+                    }}
+                  />
+                  <div className="flex items-center gap-1 flex-1">
+                    <code className="px-2 py-1 bg-slate-800 rounded text-sm font-mono min-w-[120px] text-center">
+                      {selectedElement.properties.fill || 'none'}
+                    </code>
                     <button
-                      onClick={() => updateSelectedElement({ fill: 'none' })}
-                      className="px-2 py-1 text-xs bg-slate-600 rounded hover:bg-slate-500"
+                      onClick={() => copyToClipboard(selectedElement.properties.fill || 'none', 'fill')}
+                      className="p-1 hover:bg-slate-600 rounded relative"
+                      title="Copy to clipboard"
                     >
-                      Clear
-                    </button>
-                    <button
-                      onClick={() => handleResetColor('fill')}
-                      className="px-2 py-1 text-xs bg-slate-600 rounded hover:bg-slate-500"
-                      title="Reset to original color"
-                    >
-                      Reset
+                      <Copy size={14} />
+                      {showTooltip.show && showTooltip.position === 'fill' && (
+                        <div className="absolute -top-10 -right-14 transform -translate-x-1/2 px-2 py-1 bg-slate-900 text-sm rounded shadow-lg whitespace-nowrap">
+                          Copied to clipboard!
+                        </div>
+                      )}
                     </button>
                   </div>
                 </div>
-                {showColorPicker === 'fill' && (
-                  <div 
-                    className="fixed z-50"
-                    style={{ 
-                      left: `${colorPickerPosition.x}px`, 
-                      top: `${colorPickerPosition.y}px` 
-                    }}
-                  >
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={handleColorPickerClose}
-                    />
-                    <div className="relative z-50">
-                      <ChromePicker
-                        color={currentColor}
-                        onChange={handleColorChange}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Stroke Color */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-slate-300">Stroke Color</label>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-8 h-8 rounded border border-slate-600 cursor-pointer"
-                      style={{ 
-                        backgroundColor: getElementAttribute('stroke') || 'transparent',
-                        backgroundImage: getElementAttribute('stroke') === 'none' ? 
-                          'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 
-                          'none',
-                        backgroundSize: '8px 8px',
-                        backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
-                      }}
-                      onClick={(e) => handleColorPickerOpen('stroke', e)}
-                    />
-                    <button
-                      onClick={() => updateSelectedElement({ stroke: 'none' })}
-                      className="px-2 py-1 text-xs bg-slate-600 rounded hover:bg-slate-500"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      onClick={() => handleResetColor('stroke')}
-                      className="px-2 py-1 text-xs bg-slate-600 rounded hover:bg-slate-500"
-                      title="Reset to original color"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </div>
-                {showColorPicker === 'stroke' && (
-                  <div 
-                    className="fixed z-50"
-                    style={{ 
-                      left: `${colorPickerPosition.x}px`, 
-                      top: `${colorPickerPosition.y}px` 
-                    }}
-                  >
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={handleColorPickerClose}
-                    />
-                    <div className="relative z-50">
-                      <ChromePicker
-                        color={currentColor}
-                        onChange={handleColorChange}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Stroke Width */}
               <div className="flex items-center justify-between">
-                <label className="text-slate-300">Stroke Width</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={getElementAttribute('stroke-width') || '1'}
-                    onChange={(e) => updateSelectedElement({ 'stroke-width': e.target.value })}
-                    className="w-20 rounded bg-slate-600 px-2 py-1 text-slate-300"
+                <label className="text-slate-300">Stroke Color</label>
+                <div className="flex items-center gap-2 min-w-40">
+                  <div
+                    className="w-6 h-6 rounded border border-slate-600 flex-shrink-0"
+                    style={{ 
+                      backgroundColor: selectedElement.properties.stroke || 'transparent',
+                      backgroundImage: selectedElement.properties.stroke === 'none' ? 
+                        'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 
+                        'none',
+                      backgroundSize: '8px 8px',
+                      backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
+                    }}
                   />
-                  <button
-                    onClick={() => handleResetColor('stroke-width')}
-                    className="px-2 py-1 text-xs bg-slate-600 rounded hover:bg-slate-500"
-                    title="Reset to original width"
-                  >
-                    Reset
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <code className="px-2 py-1 bg-slate-800 rounded text-sm font-mono min-w-[120px] text-center">
+                      {selectedElement.properties.stroke || 'none'}
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(selectedElement.properties.stroke || 'none', 'stroke')}
+                      className="p-1 hover:bg-slate-600 rounded relative"
+                      title="Copy to clipboard"
+                    >
+                      <Copy size={14} />
+                      {showTooltip.show && showTooltip.position === 'stroke' && (
+                        <div className="absolute -top-10 -right-14 transform -translate-x-1/2 px-2 py-1 bg-slate-900 text-sm rounded shadow-lg whitespace-nowrap">
+                          Copied to clipboard!
+                        </div>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
